@@ -55,18 +55,10 @@ fn get_batch_validation_count(
 }
 
 fn validate_pass(pass: &Vec<&String>, rules: &[Rule], is_strict: bool) -> bool {
-    //let passFields: Vec<&str> = pass.map(|l| l.split(" ").map(|s| s.split(":").nth(0).unwrap()).collect()).fold();
-    //let passFields: Vec<&String> = pass[0..pass.len()].iter().join(" ").split(" ").map(|s| s.split(":").nth(0).unwrap()).collect();
-    let mut pass_rules = Vec::new();
-    for p in pass {
-        for f in p.split(" ")
-            .map(|s| { 
-                let mut vals = s.split(":"); 
-                PassField { field: vals.next().unwrap().to_string(), value: vals.next().unwrap().to_string() }}) {
-            pass_rules.push(f);
-        }
-    }
-
+    let pass_rules: Vec<PassField> = pass.iter().map(|p| p.split(" ").map(|s| {
+            let vals: Vec<&str> = s.split(":").collect(); 
+            PassField { field: vals[0].to_string(), value: vals[1].to_string() }}).collect())
+        .fold(Vec::<PassField>::new(), |mut all, v: Vec::<PassField>| {all.extend(v); all});
     let mut count = 0;
     for rule in rules {
         for pass_field in &pass_rules {
