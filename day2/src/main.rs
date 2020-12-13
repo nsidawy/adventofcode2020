@@ -6,7 +6,6 @@ fn main() {
     let mut path = String::new(); 
     path.push_str(env::current_dir().unwrap().to_str().unwrap());
     path.push_str("\\input\\input.txt");
-
     let lines = read_lines(path);
 
     println!("Part 1: {}", count_valid_ps(&lines, &validate1));
