@@ -3,9 +3,7 @@ use std::fs::File;
 use std::io::{self, BufRead};
 
 fn main() {
-    let mut path = String::new(); 
-    path.push_str(env::current_dir().unwrap().to_str().unwrap());
-    path.push_str("\\input\\input.txt");
+    let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let lines = read_lines(path);
 
     println!("Part 1: {}", traverse_slope2(&lines, 1, 3));
@@ -41,11 +39,5 @@ fn traverse_slope2(
 fn read_lines(filename: String) -> Vec<String> {
     let file = File::open(filename).unwrap();
     let lines = io::BufReader::new(file).lines();
-    let mut l = Vec::new();
-
-    for line in lines {
-        l.push(line.unwrap());
-    }    
-
-    l
+    lines.map(|line| line.unwrap()).collect()
 }
