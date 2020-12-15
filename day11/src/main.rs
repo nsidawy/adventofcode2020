@@ -2,12 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 
-#[derive(Clone, Debug, PartialEq, Copy)]
-enum Seat {
-    Floor,
-    Empty,
-    Filled
-}
+type Grid = Vec<Vec<Seat>>;
 
 enum Direction {
     N,
@@ -17,7 +12,29 @@ enum Direction {
     S,
     SE,
     E,
-    NE
+    NE,
+}
+
+impl Direction {
+    pub fn get_next_pos(&self, (i, j): (isize, isize)) -> (isize, isize) {
+        match &self {
+            Direction::N => (i+1, j),
+            Direction::NW => (i+1, j-1),
+            Direction::NE => (i+1, j+1),
+            Direction::E => (i, j+1),
+            Direction::W => (i, j-1),
+            Direction::SE => (i-1, j+1),
+            Direction::S => (i-1, j),
+            Direction::SW => (i-1, j-1),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Copy)]
+enum Seat {
+    Floor,
+    Empty,
+    Filled,
 }
 
 fn main() {   
@@ -30,18 +47,17 @@ fn main() {
     println!("Part 2: {}", result2);
 }
 
-fn get_fill_count(grid: &Vec<Vec<Seat>>) -> usize {
+fn get_fill_count(grid: &Grid) -> usize {
     grid
         .iter()
         .map(|g| 
-            g.iter().filter(|s| 
-                **s == Seat::Filled)
+            g.iter().filter(|s| **s == Seat::Filled)
             .count()
         )
         .sum::<usize>()
 }
 
-fn calc(grid: &Vec<Vec<Seat>>, recurse: bool, filled_max: u16) -> Vec<Vec<Seat>> {
+fn calc(grid: &Grid, recurse: bool, filled_max: u16) -> Grid {
     let mut grid_next = grid.clone();
     let mut changed = false;
     let surrounding = [
@@ -54,12 +70,12 @@ fn calc(grid: &Vec<Vec<Seat>>, recurse: bool, filled_max: u16) -> Vec<Vec<Seat>>
             let pos = (i as isize, j as isize);
             match grid[i][j] {
                 Seat::Empty => 
-                    if surrounding.iter().all(|d| is_empty(grid, pos, d, recurse)){
+                    if surrounding.iter().all(|d| is_next_empty(grid, pos, d, recurse)){
                        grid_next[i][j] = Seat::Filled; 
                        changed = true;
                     },
                 Seat::Filled =>
-                    if surrounding.iter().filter(|d| !is_empty(grid, pos, *d, recurse)).count() >= filled_max as usize {
+                    if surrounding.iter().filter(|d| !is_next_empty(grid, pos, *d, recurse)).count() >= filled_max as usize {
                        grid_next[i][j] = Seat::Empty; 
                        changed = true;
                     }
@@ -75,17 +91,8 @@ fn calc(grid: &Vec<Vec<Seat>>, recurse: bool, filled_max: u16) -> Vec<Vec<Seat>>
     }
 }
 
-fn is_empty(grid: &Vec<Vec<Seat>>, (i, j): (isize, isize), direction: &Direction, recurse: bool) -> bool {
-    let (i_next, j_next) = match direction {
-        Direction::N => (i+1, j),
-        Direction::NW => (i+1, j-1),
-        Direction::NE => (i+1, j+1),
-        Direction::E => (i, j+1),
-        Direction::W => (i, j-1),
-        Direction::SE => (i-1, j+1),
-        Direction::S => (i-1, j),
-        Direction::SW => (i-1, j-1),
-    };
+fn is_next_empty(grid: &Grid, (i, j): (isize, isize), direction: &Direction, recurse: bool) -> bool {
+    let (i_next, j_next) = direction.get_next_pos((i, j));
     if i_next < 0 || i_next >= grid.len() as isize
         || j_next < 0 || j_next >= grid[0].len() as isize {
         return true
@@ -97,17 +104,17 @@ fn is_empty(grid: &Vec<Vec<Seat>>, (i, j): (isize, isize), direction: &Direction
         Seat::Empty => true,
         Seat::Floor => 
             if recurse { 
-                is_empty(&grid, (i_next, j_next), direction, true) 
+                is_next_empty(&grid, (i_next, j_next), direction, true) 
             } else { 
                 true 
             },
     }
 }
 
-fn read_lines(filename: String) -> Vec<Vec<Seat>> {
+fn read_lines(filename: String) -> Grid {
     let file = File::open(filename).unwrap();
     let lines: Vec<String> = io::BufReader::new(file).lines().map(|l| l.unwrap()).filter(|l| l.len() > 0).collect();
-    let mut grid: Vec<Vec<Seat>> = Vec::new();
+    let mut grid: Grid = Vec::new();
 
     for (i, line) in lines.iter().enumerate() {
         grid.push(Vec::new());
