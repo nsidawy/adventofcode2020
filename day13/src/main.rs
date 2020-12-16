@@ -33,12 +33,9 @@ fn get_next_bus(time: i64, buses: &Vec<Bus>) -> (i64, i64) {
 }
 
 fn calc_bus_thing(buses: &mut Vec<Bus>) -> i64 {
-    buses.sort_by_key(|b| b.offset);
-    let max_bus = buses.get(0).unwrap();
-    let mut increment = max_bus.id;
-    let mut start = 0;
-
-    buses.sort_by_key(|b| b.offset);
+    let first_bus = buses.get(0).unwrap();
+    let mut increment = first_bus.id;
+    let mut start = first_bus.id - first_bus.offset;
     for bus in buses.iter().skip(1) {
         let first = loop {
             if (start + bus.offset) % bus.id == 0 {
