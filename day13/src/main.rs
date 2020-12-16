@@ -39,17 +39,16 @@ fn calc_bus_thing(buses: &mut Vec<Bus>) -> i64 {
     let mut start = 0;
 
     buses.sort_by_key(|b| b.offset);
-    for i in 1..buses.len() {
-        let zero = &buses[i];
+    for bus in buses.iter().skip(1) {
         let first = loop {
-            if (start + zero.offset) % zero.id == 0 {
+            if (start + bus.offset) % bus.id == 0 {
                 break start
             }
             start += increment;
         };
         start += increment;
         let second = loop {
-            if (start + zero.offset) % zero.id == 0 {
+            if (start + bus.offset) % bus.id == 0 {
                 break start
             }
             start += increment;
