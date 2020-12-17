@@ -13,7 +13,7 @@ fn main() {
 }
 
 fn play(input: &[i32], num_turns: usize) -> Vec::<i32> { 
-	let mut turns = Vec::new();
+	let mut turns = Vec::with_capacity(num_turns);
 	let mut memory: HashMap::<i32, Vec<usize>>  = HashMap::new();
 	for (i, v) in input.iter().enumerate() {
 		commit(*v, i, &mut turns, &mut memory);
