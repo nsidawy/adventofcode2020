@@ -11,6 +11,12 @@ struct Range {
     max: i32,
 }
 
+impl Range {
+    pub fn in_range(&self, value: i32) -> bool {
+        value >= self.min && value <= self.max
+    }
+}
+
 struct Rule {
     name: String,
     ranges: Vec<Range>
@@ -31,6 +37,15 @@ impl Rule {
             name: name_regex.captures(&text).unwrap().get(1).map(|m| m.as_str()).unwrap().to_string(),
             ranges
         }
+    }
+
+    pub fn in_range(&self, value: i32) -> bool {
+        for range in self.ranges.iter() {
+            if range.in_range(value){ 
+                return true;
+            }
+        } 
+        false
     }
 }
 
@@ -53,20 +68,8 @@ fn get_fields(rules: &Vec<Rule>, tickets: &Vec<Ticket>) -> HashMap::<usize, Stri
     let mut possibilities = Vec::new();    
     for rule in rules {
         let mut is_field = vec!(true; tickets[0].len());
-        for ticket in tickets {
-            for (i, value) in ticket.iter().enumerate() {
-                let mut found = false;
-                for range in rule.ranges.iter() {
-                    if *value >= range.min && *value <= range.max {
-                        found = true;
-                        break;
-                    }
-                }
-                if !found {
-                    is_field[i] = false;
-                    break;
-                }
-            }
+        for i in 0..tickets[0].len() {
+            is_field[i] = tickets.iter().all(|t| rule.in_range(t[i]));
         }
         possibilities.push((rule.name.clone(), is_field));
     }
@@ -75,12 +78,13 @@ fn get_fields(rules: &Vec<Rule>, tickets: &Vec<Ticket>) -> HashMap::<usize, Stri
     while !possibilities.is_empty() {
         for i in 0..possibilities.len() {
             let possibility = &possibilities[i];
-            if possibility.1.iter().enumerate()
-                    .filter(|(j,f)| **f && !map.contains_key(j))
-                    .count() == 1 {
-                let index = possibility.1.iter().enumerate()
-                    .position(|(j,b)| *b && !map.contains_key(&j)).unwrap();
-                map.insert(index, possibility.0.clone());
+            let candidates: Vec<usize> = possibility.1.iter().enumerate()
+                .filter(|(j,f)| **f && !map.contains_key(j))
+                .map(|(j,_)| j)
+                .collect();
+
+            if candidates.len() == 1 {
+                map.insert(candidates[0], possibility.0.clone());
                 possibilities.remove(i);
                 break;
             }
@@ -96,16 +100,7 @@ fn validate_tickets(rules: &Vec<Rule>, tickets: Vec<Ticket>) -> (Vec::<Ticket>, 
     for ticket in tickets {
         let mut is_valid = true;
         for value in ticket.iter() {
-            let mut found = false;
-            for rule in rules {
-                for range in rule.ranges.iter() {
-                    if *value >= range.min && *value <= range.max{
-                        found = true;
-                        break;
-                    }
-                }
-            }
-            if !found {
+            if !rules.iter().any(|r| r.in_range(*value)) {
                 count += value;
                 is_valid = false;
             } 
@@ -138,6 +133,7 @@ fn get_input(filename: String) -> (Vec<Rule>, Ticket, Vec<Ticket>) {
 
     lines.next();
     lines.next();
+
     let mut tickets = Vec::new();
     for line in lines {
         let line = line.unwrap();
