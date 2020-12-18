@@ -42,7 +42,6 @@ fn main() {
 
     let result = fields.iter().fold(1i64, |m, (i, name)| {
         if name.split(" ").next().unwrap() == "departure" {
-            println!("{}", my_ticket[*i]);
             return m * my_ticket[*i] as i64;
         }
         m
@@ -65,6 +64,7 @@ fn get_fields(rules: &Vec<Rule>, tickets: &Vec<Ticket>) -> HashMap::<usize, Stri
                 }
                 if !found {
                     is_field[i] = false;
+                    break;
                 }
             }
         }
