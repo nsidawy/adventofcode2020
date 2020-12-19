@@ -22,7 +22,7 @@ impl Cube {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let cycles = 6usize;
-    let dimension = 3usize;
+    let dimension = 4usize;
     let (cubes, dimensions, dimension_widths) = read_lines(path, cycles, dimension);
     let cubes = step(cubes, dimensions, dimension_widths, cycles);
     let active_count = cubes.iter()
@@ -37,9 +37,16 @@ fn step(cubes: Vec<Cube>, dimensions: Vec<usize>, dimension_widths: Vec<usize>, 
     }
     println!("cycle {} {:?}", cycles, Local::now().format("%H:%M:%S").to_string());
     let mut next_cubes = vec![Cube::Inactive; cubes.len()];
-    for i in 0..cubes.len() {
-        let neighbors = get_neighbors(i, &dimensions, &dimension_widths);
-        next_cubes[i] = get_new_state(&cubes, &neighbors, i)
+    let active_cubes: Vec<(usize,Vec<usize>)> = cubes.iter().enumerate()
+        .filter(|(_,c)| **c == Cube::Active)
+        .map(|(i,_)| (i, get_neighbors(i, &dimensions, &dimension_widths)))
+        .collect();
+    for (active_cube, neighbors) in active_cubes {
+        next_cubes[active_cube] = get_new_state(&cubes, &neighbors, active_cube);
+        for neighbor in neighbors {
+            let neighbors = get_neighbors(neighbor, &dimensions, &dimension_widths);
+            next_cubes[neighbor] = get_new_state(&cubes, &neighbors, neighbor);
+        }
     }
     step(next_cubes, dimensions, dimension_widths, cycles - 1)
 }
