@@ -22,7 +22,7 @@ impl Cube {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let cycles = 6usize;
-    let dimension = 4usize;
+    let dimension = 3usize;
     let (cubes, dimensions) = read_lines(path, cycles, dimension);
     let cubes = step(cubes, dimensions, cycles);
     let active_count = cubes.iter()
@@ -69,7 +69,7 @@ fn get_new_state(cubes: &Vec<Cube>, dimensions: &Vec<usize>, index: usize) -> Cu
 
 fn get_neighbors(neighbor_coords: &Vec<Vec<usize>>, cur: &mut Vec<usize>) -> Vec<Vec<usize>> {
     if neighbor_coords.len() == 0 {
-        return vec!(cur.clone());
+        return vec!(cur.to_vec());
     }
     let mut result = Vec::new();
     let next_neighbor_coords: Vec<Vec<usize>> = neighbor_coords[1..].to_vec();
