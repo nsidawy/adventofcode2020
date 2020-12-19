@@ -1,18 +1,12 @@
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
+use chrono::prelude::*;
 
 #[derive(Debug, Clone, PartialEq, Copy)]
 enum Cube {
     Inactive,
     Active
-}
-
-struct Pos {
-    x: usize,
-    y: usize,
-    z: usize,
-    w: usize
 }
 
 impl Cube {
@@ -28,69 +22,97 @@ impl Cube {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let cycles = 6usize;
-    let cubes = read_lines(path, cycles, 4);
-    let cubes = step(cubes, cycles);
+    let dimension = 4usize;
+    let (cubes, dimensions) = read_lines(path, cycles, dimension);
+    let cubes = step(cubes, dimensions, cycles);
     let active_count = cubes.iter()
-        .fold(0i32, |s1, c1| s1 + c1.iter()
-            .fold(0i32, |s2, c2| s2 + c2.iter()
-                .fold(0i32, |s3, c3| s3 + c3.iter().map(|c3| match c3 {Cube::Active => 1i32, Cube::Inactive => 0}).sum::<i32>())));
+        .fold(0i32, |s, c| s + match c {Cube::Active => 1i32, Cube::Inactive => 0});
 
     println!("{:#?}", active_count);
 }
 
-fn step(cubes: Vec<Vec<Vec<Vec<Cube>>>>, cycles: usize) -> Vec<Vec<Vec<Vec<Cube>>>> {
+fn step(cubes: Vec<Cube>, dimensions: Vec<usize>, cycles: usize) -> Vec<Cube> {
     if cycles == 0 {
         return cubes;
     }
-    let mut next_cubes = Vec::new();
-    for w in 0..cubes.len() {
-        next_cubes.push(Vec::new());
-        let new_w_length = next_cubes.len()-1;
-        for z in 0..cubes[0].len() {
-            next_cubes[new_w_length].push(Vec::new());
-            let new_z_length = next_cubes[new_w_length].len()-1;
-            for y in 0..cubes[0][0].len() {
-                next_cubes[new_w_length][new_z_length].push(Vec::new());
-                let new_y_length = next_cubes[new_w_length][new_z_length].len()-1;
-                for x in 0..cubes[0][0][0].len() {
-                    next_cubes[new_w_length][new_z_length][new_y_length].push(get_new_state(&cubes, Pos{z, y, x, w}));
-                }
-            }
-        }
+    println!("cycle {} {:?}", cycles, Local::now().format("%H:%M:%S").to_string());
+    let mut next_cubes = vec![Cube::Inactive; cubes.len()];
+    for i in 0..cubes.len() {
+        next_cubes[i] = get_new_state(&cubes, &dimensions, i)
     }
-    step(next_cubes, cycles - 1)
+    step(next_cubes, dimensions, cycles - 1)
 }
 
-fn get_new_state(cubes: &Vec<Vec<Vec<Vec<Cube>>>>, pos: Pos) -> Cube {
-    let mut count = 0;
-    for x in (pos.x as isize -1)..(pos.x as isize + 2) {
-        for y in (pos.y as isize -1)..(pos.y as isize + 2) {
-            for z in (pos.z as isize -1)..(pos.z as isize + 2) {
-                for w in (pos.w as isize -1)..(pos.w as isize + 2) {
-                    if (x == pos.x as isize && y == pos.y as isize && z == pos.z as isize && w == pos.w as isize) 
-                        || x < 0 || y < 0 || z < 0 || w < 0
-                        || x >= cubes[0][0][0].len() as isize
-                        || y >= cubes[0][0].len() as isize
-                        || z >= cubes[0].len() as isize
-                        || w >= cubes.len() as isize
-                    {
-                        continue;
-                    }
-                    if cubes[w as usize][z as usize][y as usize][x as usize] == Cube::Active {
-                        count += 1;
-                    }
-                }
-            }
-        }
-    }
+fn get_new_state(cubes: &Vec<Cube>, dimensions: &Vec<usize>, index: usize) -> Cube {
+    let indices = break_cube_index(index, &dimensions);
 
-    match cubes[pos.w][pos.z][pos.y][pos.x] {
+    let neighbor_coords:Vec<Vec<usize>> = indices.iter().enumerate().map(|(i, ind)| {
+        let mut v = Vec::new();
+        if *ind as isize - 1 >= 0 {
+            v.push(ind - 1);
+        }
+        if *ind + 1 < dimensions[i] {
+            v.push(ind + 1);
+        }
+        v.push(*ind);
+        v
+    }).collect();
+    let count = get_neighbors(&neighbor_coords, &mut Vec::new()).iter()
+        .map(|n| get_cube_index(n, dimensions))
+        .filter(|i| *i != index)
+        .fold(0u32, |s, i| s + match cubes[i] {Cube::Active => 1, Cube::Inactive => 0});
+    match cubes[index] {
         Cube::Active => if count == 2 || count == 3 { Cube::Active } else { Cube::Inactive}
         Cube::Inactive => if count == 3 { Cube::Active } else { Cube::Inactive}
     }
 }
 
-fn read_lines(filename: String, cycles: usize, dimension: usize) -> Vec<Vec<Vec<Vec<Cube>>>> {
+fn get_neighbors(neighbor_coords: &Vec<Vec<usize>>, cur: &mut Vec<usize>) -> Vec<Vec<usize>> {
+    if neighbor_coords.len() == 0 {
+        return vec!(cur.clone());
+    }
+    let mut result = Vec::new();
+    let next_neighbor_coords: Vec<Vec<usize>> = neighbor_coords[1..].to_vec();
+    for n in neighbor_coords[0].iter() {
+        cur.push(*n);
+        result.push(get_neighbors(&next_neighbor_coords, cur));
+        cur.remove(cur.len() - 1);
+    }
+
+    result.iter().fold(Vec::new(), |mut agg, vs| {
+        for v in vs.iter() {
+            agg.push(v.to_vec());
+        }
+        agg
+    })
+}
+
+fn get_cube_index(indices: &Vec<usize>, dimensions: &Vec<usize>) -> usize {
+    let mut i = 0;
+    for (j,index) in indices.iter().enumerate() {
+        let mut m = 1; 
+        for d in dimensions.iter().skip(j + 1) {
+            m *= *d;
+        }
+        i += *index * m;
+    }
+    i
+}
+
+fn break_cube_index(index: usize, dimensions: &Vec<usize>) -> Vec<usize> {
+    let mut indices: Vec<usize> = Vec::new();
+    for i in 0..dimensions.len() {
+        let width = dimensions.iter().skip(i+1).fold(1usize, |s,d| s * d);
+        let base = indices.iter().enumerate()
+            .fold(0isize, |s,(j,ind)| s + *ind as isize * dimensions.iter().skip(j+1).fold(1isize, |s,d| s * *d as isize));
+        let v = (index as isize - base) as usize
+            / width;
+        indices.push(v);
+    }
+    indices
+}
+
+fn read_lines(filename: String, cycles: usize, dimension: usize) -> (Vec<Cube>, Vec<usize>) {
     let file = File::open(filename).unwrap();
     let lines = io::BufReader::new(file).lines();
     let cube_lines: Vec<Vec<Cube>> = lines
@@ -104,9 +126,23 @@ fn read_lines(filename: String, cycles: usize, dimension: usize) -> Vec<Vec<Vec<
         })
         .collect();
     
-    let mut cube_lines4 = vec![vec![vec![vec![Cube::Inactive; cube_lines[0].len()]; cube_lines.len() + cycles * 2]; cycles * 2 + 1]; cycles * 2 + 1];
-    for i in 0..cube_lines.len() {
-        cube_lines4[cycles][cycles][cycles + i] = cube_lines.get(i).unwrap().to_vec();
-    }
-    cube_lines4
+     let extra_dimensions = (dimension as isize - 2) as usize;
+     let extra_dimensions_len = (2 * cycles) + 1;
+     let mut cubes = vec![Cube::Inactive; (2 * cycles + cube_lines.len()) * cube_lines[0].len() * extra_dimensions_len.pow(extra_dimensions  as u32)];
+     let mut dimensions = Vec::new();
+     for _ in 0..extra_dimensions {
+         dimensions.push(extra_dimensions_len);
+     }
+     dimensions.push(cube_lines.len() + cycles * 2);
+     dimensions.push(cube_lines[0].len());
+     for (i, cl) in cube_lines.iter().enumerate() {
+        for (j, c) in cl.iter().enumerate() {
+            let mut pos = vec![cycles; extra_dimensions];
+            pos.push(i+cycles);
+            pos.push(j);
+            cubes[get_cube_index(&pos, &dimensions)] = *c;
+        }
+     }
+
+     (cubes, dimensions)
 }
