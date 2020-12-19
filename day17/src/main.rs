@@ -2,59 +2,111 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 
+#[derive(Debug, Clone, PartialEq, Copy)]
+enum Cube {
+    Inactive,
+    Active
+}
+
+struct Pos {
+    x: usize,
+    y: usize,
+    z: usize,
+    w: usize
+}
+
+impl Cube {
+    pub fn build(c: char) -> Option<Cube> {
+        match c {
+            '#' => Some(Cube::Active),
+            '.' => Some(Cube::Inactive),
+            _ => None,
+        }
+    }
+}
+
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
-    let mut ints = read_lines(path);
-    ints.push(0);
-    ints.sort();
-    ints.push(ints[ints.len()-1] + 3);
+    let cycles = 6usize;
+    let cubes = read_lines(path, cycles, 4);
+    let cubes = step(cubes, cycles);
+    let active_count = cubes.iter()
+        .fold(0i32, |s1, c1| s1 + c1.iter()
+            .fold(0i32, |s2, c2| s2 + c2.iter()
+                .fold(0i32, |s3, c3| s3 + c3.iter().map(|c3| match c3 {Cube::Active => 1i32, Cube::Inactive => 0}).sum::<i32>())));
 
-    let (ones, twos, threes) = get_voltage_differnces(&ints);
-    println!("Part 1: {} {} {}; answer: {}", ones, twos, threes, ones * threes);
-
-    let mut memoize = vec![0;ints.len()];
-    memoize[0] = 1;
-    println!("Part 2: {}", count_adapter_combos(&ints[..], &mut memoize));
+    println!("{:#?}", active_count);
 }
 
-fn count_adapter_combos(sorted_jolts: &[u32], memoize: &mut Vec<u64>) -> u64 {
-    if memoize[sorted_jolts.len()-1] != 0 {
-        return memoize[sorted_jolts.len() - 1]
+fn step(cubes: Vec<Vec<Vec<Vec<Cube>>>>, cycles: usize) -> Vec<Vec<Vec<Vec<Cube>>>> {
+    if cycles == 0 {
+        return cubes;
     }
+    let mut next_cubes = Vec::new();
+    for w in 0..cubes.len() {
+        next_cubes.push(Vec::new());
+        let new_w_length = next_cubes.len()-1;
+        for z in 0..cubes[0].len() {
+            next_cubes[new_w_length].push(Vec::new());
+            let new_z_length = next_cubes[new_w_length].len()-1;
+            for y in 0..cubes[0][0].len() {
+                next_cubes[new_w_length][new_z_length].push(Vec::new());
+                let new_y_length = next_cubes[new_w_length][new_z_length].len()-1;
+                for x in 0..cubes[0][0][0].len() {
+                    next_cubes[new_w_length][new_z_length][new_y_length].push(get_new_state(&cubes, Pos{z, y, x, w}));
+                }
+            }
+        }
+    }
+    step(next_cubes, cycles - 1)
+}
 
-    let mut index = 1;
+fn get_new_state(cubes: &Vec<Vec<Vec<Vec<Cube>>>>, pos: Pos) -> Cube {
     let mut count = 0;
-    loop {
-        if index >= sorted_jolts.len() || sorted_jolts[index] - sorted_jolts[0] > 3 {
-            memoize[sorted_jolts.len() - 1] = count;
-            break count
+    for x in (pos.x as isize -1)..(pos.x as isize + 2) {
+        for y in (pos.y as isize -1)..(pos.y as isize + 2) {
+            for z in (pos.z as isize -1)..(pos.z as isize + 2) {
+                for w in (pos.w as isize -1)..(pos.w as isize + 2) {
+                    if (x == pos.x as isize && y == pos.y as isize && z == pos.z as isize && w == pos.w as isize) 
+                        || x < 0 || y < 0 || z < 0 || w < 0
+                        || x >= cubes[0][0][0].len() as isize
+                        || y >= cubes[0][0].len() as isize
+                        || z >= cubes[0].len() as isize
+                        || w >= cubes.len() as isize
+                    {
+                        continue;
+                    }
+                    if cubes[w as usize][z as usize][y as usize][x as usize] == Cube::Active {
+                        count += 1;
+                    }
+                }
+            }
         }
-        count += count_adapter_combos(&sorted_jolts[index..], memoize);
-        index += 1;
+    }
+
+    match cubes[pos.w][pos.z][pos.y][pos.x] {
+        Cube::Active => if count == 2 || count == 3 { Cube::Active } else { Cube::Inactive}
+        Cube::Inactive => if count == 3 { Cube::Active } else { Cube::Inactive}
     }
 }
 
-fn get_voltage_differnces(sorted_jolts: &Vec<u32>) -> (u16, u16, u16){
-    let mut ones = 0;
-    let mut twos = 0;
-    let mut threes = 0;
-    for i in 1..sorted_jolts.len() {
-        match sorted_jolts[i] - sorted_jolts[i-1] {
-            1 => ones += 1,
-            2 => twos += 1,
-            3 => threes += 1,
-            _ => ()
-        }
-    }
-    (ones, twos, threes)
-}
-
-fn read_lines(filename: String) -> Vec<u32> {
+fn read_lines(filename: String, cycles: usize, dimension: usize) -> Vec<Vec<Vec<Vec<Cube>>>> {
     let file = File::open(filename).unwrap();
     let lines = io::BufReader::new(file).lines();
-    lines
-        .map(|line| line.unwrap().parse::<u32>())
-        .filter(|d| d.is_ok())
-        .map(|d| d.unwrap())
-        .collect()
+    let cube_lines: Vec<Vec<Cube>> = lines
+        .map(|line| {
+            let line = line.unwrap();
+            let mut cube_line = vec![Cube::Inactive; line.len() + 2 * cycles];
+            for (i, c) in line.chars().enumerate() {
+                cube_line[i + cycles] = Cube::build(c).expect("cannot parse character");
+            }
+            cube_line
+        })
+        .collect();
+    
+    let mut cube_lines4 = vec![vec![vec![vec![Cube::Inactive; cube_lines[0].len()]; cube_lines.len() + cycles * 2]; cycles * 2 + 1]; cycles * 2 + 1];
+    for i in 0..cube_lines.len() {
+        cube_lines4[cycles][cycles][cycles + i] = cube_lines.get(i).unwrap().to_vec();
+    }
+    cube_lines4
 }
