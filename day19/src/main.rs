@@ -38,13 +38,11 @@ impl Rule {
 }
 
 fn main() {   
-    let path = format!("{}\\input\\input2.txt", env::current_dir().unwrap().to_str().unwrap()); 
+    let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let (mut rules, lines) = read_lines(path);
 
-    let mut res31 = generate(31, &rules);
-    let mut res42 = generate(42, &rules);
-    res31.sort();
-    res42.sort();
+    let valid_count = lines.iter().filter(|l| is_valid(0, l, &rules).0).count();
+    println!("Part 1: {:#?}", valid_count);
 
     let mut reference_list0: Vec<Vec<u32>> = Vec::new();
     let max_len = 15;
@@ -60,12 +58,9 @@ fn main() {
             reference_list0.push(ref_list);
         }
     }
-    println!("ref 0 {:?}", reference_list0);
     rules.insert(0, Rule::Reference(reference_list0));
-
     let valid_count = lines.iter().filter(|l| is_valid(0, l, &rules).0).count();
-
-    println!("{:#?}", valid_count);
+    println!("Part 2: {:#?}", valid_count);
 }
 
 fn is_valid(rule_id: u32, text: &String, rules: &HashMap<u32, Rule>) -> (bool, String) {
@@ -97,40 +92,6 @@ fn is_valid(rule_id: u32, text: &String, rules: &HashMap<u32, Rule>) -> (bool, S
             }
 
             (false, String::from(""))
-        }
-    }
-}
-
-fn generate(rule_id: u32, rules: &HashMap<u32, Rule>) -> Vec<String>{
-    let rule  = rules.get(&rule_id).unwrap();
-    match rule {
-        Rule::Literal(c) => vec!(String::from(*c)),
-        Rule::Reference(references) => {
-            let mut results: Vec<String> = Vec::new();
-            for reference_list in references {
-                let mut reference_results: Vec<String> = Vec::new();
-                for reference in reference_list {
-                    let dep_results = generate(*reference, rules);
-                    if reference_results.len() == 0 {
-                        reference_results = dep_results;
-                        continue;
-                    }
-                    let mut next_results: Vec<String> = Vec::new();
-                    for rr in reference_results.iter() {
-                        for dr in dep_results.iter() {
-                            let mut rr = rr.clone();
-                            rr.push_str(dr.as_str());
-                            next_results.push(rr);
-                        }
-                    }
-                    reference_results = next_results;
-                }
-                for rr in reference_results {
-                    results.push(rr);
-                }
-            }
-
-            results 
         }
     }
 }
