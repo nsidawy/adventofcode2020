@@ -47,6 +47,7 @@ impl Node {
 
             let c = c.unwrap();
             match c {
+                ' ' => ,
                 '+' | '*' => operands.push(OperandType::parse(c).expect("get parse operand")),
                 '(' => nodes.push(Node::parse(chars)),
                 ')' => break,
@@ -94,6 +95,7 @@ impl Node {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let expressions = read_lines(path);
+
     let precedence1 = vec!(
         [OperandType::Addition, OperandType::Multiplication].iter().cloned().collect()
     );
@@ -101,6 +103,7 @@ fn main() {
         .map(|e| e.evaluate(&precedence1))
         .sum::<i64>();
     println!("Part 1: {}", result1);
+    
     let precedence2 = vec!(
         [OperandType::Addition].iter().cloned().collect(),
         [OperandType::Multiplication].iter().cloned().collect(),
@@ -114,7 +117,6 @@ fn main() {
 fn read_lines(filename: String) -> Vec<Node> {
     let file = File::open(filename).unwrap();
     io::BufReader::new(file).lines()
-        .map(|l| l.unwrap().replace(" ", ""))
-        .map(|l| Node::parse(&mut l.chars()))
+        .map(|l| Node::parse(&mut l.unwrap().chars()))
         .collect()
 }
