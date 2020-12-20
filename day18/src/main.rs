@@ -3,7 +3,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
 
-#[derive(Clone,Debug)]
+#[derive(Clone,Debug,PartialEq)]
 enum OperandType {
     Addition,
     Multiplication
@@ -15,6 +15,13 @@ impl OperandType {
             '+' => Some(OperandType::Addition),
             '*' => Some(OperandType::Multiplication),
             _ => None
+        }
+    }
+
+    pub fn calculate(&self, v1: i64, v2: i64) -> i64 {
+        match self {
+            OperandType::Multiplication => v1 * v2,
+            OperandType::Addition => v1 + v2,
         }
     }
 }
@@ -47,60 +54,35 @@ impl Node {
         Node::Expression(nodes, operands)
     }
 
-    pub fn evaluate(&self) -> i64 {
+    pub fn evaluate(&self, precedence: &Vec<Vec<OperandType>>) -> i64 {
         match self {
             Node::Constant(n) => *n,
             Node::Expression(nodes, operands) => {
-                let mut base = nodes[0].evaluate();
-                for i in 1..nodes.len() {
-                    let value = nodes[i].evaluate();
-                    base = match operands[i-1] {
-                        OperandType::Multiplication => base * value,
-                        OperandType::Addition => base + value,
-                    } 
-                }
-                base 
-            }
-        }
-    }
-
-    pub fn evaluate2(&self) -> i64 {
-        match self {
-            Node::Constant(n) => *n,
-            Node::Expression(nodes, operands) => {
-                let mut base: Option<i64> = None;
-                let mut nodes2: Vec<Node> = Vec::new();
-                let mut operands2: Vec<OperandType> = Vec::new();
-                for i in 0..nodes.len() {
-                    let value = nodes[i].evaluate2();
-                    if base.is_none() {
-                        base = Some(value);
-                        continue;
-                    }
-                    match operands[i-1] {
-                        OperandType::Addition => base = Some(base.unwrap() + value),
-                        OperandType::Multiplication => {
-                            operands2.push(OperandType::Multiplication);
+                let mut nodes = nodes.clone();
+                let mut operands = operands.clone();
+                for operators in precedence {
+                    let mut base: Option<i64> = None;
+                    let mut nodes2: Vec<Node> = Vec::new();
+                    let mut operands2: Vec<OperandType> = Vec::new();
+                    for i in 0..nodes.len() {
+                        let value = nodes[i].evaluate(precedence);
+                        if base.is_none() {
+                            base = Some(value);
+                            continue;
+                        }
+                        if operators.contains(&operands[i-1]) {
+                            base = Some(operands[i-1].calculate(base.unwrap(), value));
+                        } else {
+                            operands2.push(operands[i-1].clone());
                             nodes2.push(Node::Constant(base.unwrap()));
                             base = Some(value);
-                        },
-                    } 
-                }
-                nodes2.push(Node::Constant(base.unwrap()));
-
-                let mut base: Option<i64> = None;
-                for i in 0..nodes2.len() {
-                    let value = nodes2[i].evaluate2();
-                    if base.is_none() {
-                        base = Some(value);
-                        continue;
+                        }
                     }
-                    base = match operands2[i-1] {
-                        OperandType::Addition => Some(base.unwrap() + value),
-                        OperandType::Multiplication => Some(base.unwrap() * value),
-                    };
+                    nodes2.push(Node::Constant(base.unwrap()));
+                    nodes = nodes2;
+                    operands = operands2;
                 }
-                base.unwrap()
+                nodes[0].evaluate(precedence)
             }
         }
     }
@@ -111,11 +93,11 @@ fn main() {
     let expressions = read_lines(path);
 
     let result1 = expressions.iter()
-        .map(|e| e.evaluate())
+        .map(|e| e.evaluate(&vec!(vec!(OperandType::Addition, OperandType::Multiplication))))
         .sum::<i64>();
     println!("Part 1: {}", result1);
     let result2 = expressions.iter()
-        .map(|e| e.evaluate2())
+        .map(|e| e.evaluate(&vec!(vec!(OperandType::Addition), vec!(OperandType::Multiplication))))
         .sum::<i64>();
     println!("Part 2: {}", result2);
 }
