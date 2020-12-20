@@ -2,12 +2,15 @@ use std::str::Chars;
 use std::env;
 use std::fs::File;
 use std::io::{self, BufRead};
+use std::collections::HashSet;
 
-#[derive(Clone,Debug,PartialEq)]
+#[derive(Clone,Debug,PartialEq, Hash)]
 enum OperandType {
     Addition,
     Multiplication
 }
+
+impl Eq for OperandType {}
 
 impl OperandType {
     pub fn parse(c: char) -> Option<OperandType> {
@@ -54,7 +57,7 @@ impl Node {
         Node::Expression(nodes, operands)
     }
 
-    pub fn evaluate(&self, precedence: &Vec<Vec<OperandType>>) -> i64 {
+    pub fn evaluate(&self, precedence: &Vec<HashSet<OperandType>>) -> i64 {
         match self {
             Node::Constant(n) => *n,
             Node::Expression(nodes, operands) => {
@@ -91,13 +94,19 @@ impl Node {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let expressions = read_lines(path);
-
+    let precedence1 = vec!(
+        [OperandType::Addition, OperandType::Multiplication].iter().cloned().collect()
+    );
     let result1 = expressions.iter()
-        .map(|e| e.evaluate(&vec!(vec!(OperandType::Addition, OperandType::Multiplication))))
+        .map(|e| e.evaluate(&precedence1))
         .sum::<i64>();
     println!("Part 1: {}", result1);
+    let precedence2 = vec!(
+        [OperandType::Addition].iter().cloned().collect(),
+        [OperandType::Multiplication].iter().cloned().collect(),
+    );
     let result2 = expressions.iter()
-        .map(|e| e.evaluate(&vec!(vec!(OperandType::Addition), vec!(OperandType::Multiplication))))
+        .map(|e| e.evaluate(&precedence2))
         .sum::<i64>();
     println!("Part 2: {}", result2);
 }
