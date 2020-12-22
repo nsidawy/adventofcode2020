@@ -65,17 +65,14 @@ fn get_allergen_matches(allergen_possibilities: &mut HashMap<String,HashSet<Stri
                 new_matches.push((String::from(a), String::from(is.iter().next().unwrap())));
             }
         }
-
         for (a,i) in new_matches.iter() {
             allergen_possibilities.remove(a);
             for ap_a in allergen_possibilities.values_mut() {
                 ap_a.remove(i);
             }
         }
-
         matches.extend(new_matches);
     }
-
     matches
 }
 
