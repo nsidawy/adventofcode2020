@@ -36,21 +36,12 @@ fn main() {
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let foods = read_lines(path);
     let (mut allergen_possibilities, allergen_free_incredients) = get_allergen_free_ingredients(&foods);
-    let appearence_count = foods.iter().fold(0u32, |s,f| {
-        let mut count = 0;
-        for afi in allergen_free_incredients.iter() {
-            if f.ingredients.contains(afi) {
-                count += 1;
-            }
-        }
-        s + count
-    });
-
+    let appearence_count = foods.iter()
+        .fold(0u32, |s,f| s + allergen_free_incredients.iter().fold(0u32, |s1,afi| s1 + if f.ingredients.contains(afi) { 1 } else { 0 }));
     let mut allergen_matches = get_allergen_matches(&mut allergen_possibilities);
     allergen_matches.sort_by_key(|(a,_)| String::from(a));
     let list = allergen_matches.into_iter().map(|(_,i)| i).collect::<Vec<String>>().join_with(",").to_string();
 
-    println!("{:#?}", allergen_free_incredients);
     println!("{:#?}", appearence_count);
     println!("{:#?}", list);
 }
@@ -78,7 +69,6 @@ fn get_allergen_matches(allergen_possibilities: &mut HashMap<String,HashSet<Stri
 
 fn get_allergen_free_ingredients(foods: &Vec<Food>) -> (HashMap<String,HashSet<String>>, Vec<String>) {
     let mut allergen_possibilities: HashMap<String,HashSet<String>> = HashMap::new();
-
     for food in foods {
         for allergen in food.allergens.iter() {
             if allergen_possibilities.contains_key(allergen) {
@@ -109,7 +99,6 @@ fn get_allergen_free_ingredients(foods: &Vec<Food>) -> (HashMap<String,HashSet<S
             allergen_free_ingredients.push(ingredient);
         }
     }
-    println!("{:#?}", allergen_possibilities);
     (allergen_possibilities, allergen_free_ingredients)
 }
 
