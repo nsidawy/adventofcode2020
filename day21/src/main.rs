@@ -4,7 +4,6 @@ use std::collections::HashSet;
 use std::fs::File;
 use std::io::{self, BufRead};
 use regex::Regex;
-use itertools::Itertools;
 use joinery::Joinable;
 
 #[derive(Debug)]
@@ -35,9 +34,9 @@ impl Food {
 fn main() {   
     let path = format!("{}\\input\\input.txt", env::current_dir().unwrap().to_str().unwrap()); 
     let foods = read_lines(path);
-    let (mut allergen_possibilities, allergen_free_incredients) = get_allergen_free_ingredients(&foods);
-    let appearence_count = foods.iter()
-        .fold(0u32, |s,f| s + allergen_free_incredients.iter().fold(0u32, |s1,afi| s1 + if f.ingredients.contains(afi) { 1 } else { 0 }));
+    let mut allergen_possibilities = get_allergen_possibilities(&foods);
+    let allergens: HashSet<String> = allergen_possibilities.iter().flat_map(|(_,is)| is.iter().map(|i| String::from(i))).collect();
+    let appearence_count = foods.into_iter().flat_map(|f| f.ingredients).filter(|i| !allergens.contains(i)).count();
     let mut allergen_matches = get_allergen_matches(&mut allergen_possibilities);
     allergen_matches.sort_by_key(|(a,_)| String::from(a));
     let list = allergen_matches.into_iter().map(|(_,i)| i).collect::<Vec<String>>().join_with(",").to_string();
@@ -49,57 +48,30 @@ fn main() {
 fn get_allergen_matches(allergen_possibilities: &mut HashMap<String,HashSet<String>>) -> Vec<(String,String)> {
     let mut matches = Vec::new();
 
-    while !allergen_possibilities.is_empty() {
-        let mut new_matches = vec!();
-        for (a, is) in allergen_possibilities.iter() {
-            if is.len() == 1 {
-                new_matches.push((String::from(a), String::from(is.iter().next().unwrap())));
-            }
+    while let Some((a,_)) = allergen_possibilities.iter().find(|(_,is)| is.len() == 1) {
+        let i = String::from(allergen_possibilities.get(a).unwrap().iter().next().unwrap());
+        let a = String::from(a);
+        for ap_a in allergen_possibilities.values_mut() {
+            ap_a.remove(&i);
         }
-        for (a,i) in new_matches.iter() {
-            allergen_possibilities.remove(a);
-            for ap_a in allergen_possibilities.values_mut() {
-                ap_a.remove(i);
-            }
-        }
-        matches.extend(new_matches);
+        matches.push((a, i));
     }
     matches
 }
 
-fn get_allergen_free_ingredients(foods: &Vec<Food>) -> (HashMap<String,HashSet<String>>, Vec<String>) {
+fn get_allergen_possibilities(foods: &Vec<Food>) -> HashMap<String,HashSet<String>> {
     let mut allergen_possibilities: HashMap<String,HashSet<String>> = HashMap::new();
     for food in foods {
         for allergen in food.allergens.iter() {
             if allergen_possibilities.contains_key(allergen) {
-                let mut ap = allergen_possibilities.get(allergen).unwrap().clone();
-                for a in allergen_possibilities.get(allergen).unwrap().iter() {
-                    if !food.ingredients.contains(a) {
-                        ap.remove(a);
-                    }
-                }
-                allergen_possibilities.insert(allergen.to_string(), ap);
+                let ap = allergen_possibilities.get_mut(allergen).unwrap();
+                *ap = ap.intersection(&food.ingredients).map(|i| String::from(i)).collect::<HashSet<_>>();
             } else {
                 allergen_possibilities.insert(allergen.to_string(), food.ingredients.clone());
             }
         }
     }
-
-    let ingredients = foods.iter().flat_map(|f| f.ingredients.clone()).collect::<Vec<String>>().into_iter().unique();
-    let mut allergen_free_ingredients = vec!();
-    for ingredient in ingredients {
-        let mut found = false;
-        for ap in allergen_possibilities.values() {
-            if ap.contains(&ingredient) {
-                found = true;
-                break;
-            }            
-        } 
-        if !found {
-            allergen_free_ingredients.push(ingredient);
-        }
-    }
-    (allergen_possibilities, allergen_free_ingredients)
+    allergen_possibilities
 }
 
 fn read_lines(filename: String) -> Vec<Food> {
