@@ -46,12 +46,7 @@ impl CupList {
     }
 
     pub fn print(&self) {
-        for cur in self.iter() {
-            if let CupList::Cup(i,_) = *cur {
-                print!("{},", i);
-            }
-        }
-        println!("");
+        println!("{}", self.iter().map(|c| c.value().unwrap()).fold(String::new(), |s,c| s + &c.to_string() + ","));
     }
 }
 
@@ -65,6 +60,7 @@ impl Iterator for CupListIter {
     type Item = Rc<CupList>;
 
     fn next(&mut self) -> std::option::Option<<Self as std::iter::Iterator>::Item> { 
+        // end the iterator if we hit a cycle or hit a Nil
         if let CupList::Nil = *self.current {
             return None;
         }
