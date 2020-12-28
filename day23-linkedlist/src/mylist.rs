@@ -31,8 +31,9 @@ impl CupList {
     }
 
     pub fn set_next(&self, next: &Rc<CupList>) {
-        if let CupList::Cup(_, n) = self {
-            *n.borrow_mut() = Rc::clone(&next);
+        match self {
+            CupList::Cup(_, n) => { *n.borrow_mut() = Rc::clone(&next); },
+            CupList::Nil => panic!("Can't add next to Nil node")
         }
     }
 
