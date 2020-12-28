@@ -42,7 +42,7 @@ impl CupList {
     }
 
     pub fn count(&self) -> usize {
-        CupList::iter(self).count()
+        self.iter().count()
     }
 
     pub fn print(&self) {
