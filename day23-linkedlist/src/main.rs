@@ -55,13 +55,13 @@ fn play(mut current: Rc<CupList>, cup_pointers: &Vec<Rc<CupList>>, moves: u32) -
         let c1 = cup1.value().unwrap();
         let c2 = cup2.value().unwrap();
         let c3 = cup3.value().unwrap();
-        let mut destination = if c == 1 { cup_pointers.len()-1 } else { c - 1 }; 
-        while destination == c1 || destination == c2 || destination == c3 {
-            destination = if destination == 1 { cup_pointers.len()-1 } else { destination - 1 }; 
+        let mut d = if c == 1 { cup_pointers.len()-1 } else { c - 1 }; 
+        while d == c1 || d == c2 || d == c3 {
+            d = if d == 1 { cup_pointers.len()-1 } else { d - 1 }; 
         };
 
         //3.
-        let destination = Rc::clone(&cup_pointers[destination]);
+        let destination = Rc::clone(&cup_pointers[d]);
         cup3.set_next(&destination.next().unwrap());
         destination.set_next(&cup1);
         
