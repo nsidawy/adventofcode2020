@@ -31,7 +31,7 @@ fn get_cups(input: &str, total: usize) -> (Rc<CupList>, Vec<Rc<CupList>>) {
     let ascending_start = ints.len()+1;
     let labels = ints.into_iter().chain(ascending_start..total+1);
     for value in labels.rev() {
-        current = Rc::new(CupList::new(value, &current));
+        current = Rc::new(CupList::push(value, &current));
         cup_pointers[value] = Rc::clone(&current);
         if tail.is_none() {
             tail = Some(Rc::clone(&current));

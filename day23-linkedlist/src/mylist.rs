@@ -12,7 +12,7 @@ impl CupList {
         CupList::Nil
     }
 
-    pub fn new(value: usize, next: &Rc<CupList>) -> Self {
+    pub fn push(value: usize, next: &Rc<CupList>) -> Self {
         CupList::Cup(value, RefCell::new(Rc::clone(next)))
     }
 
@@ -26,13 +26,13 @@ impl CupList {
     pub fn next(&self) -> Option<Rc<CupList>> {
         match self {
             CupList::Nil => None,
-            CupList::Cup(_, next) => Some(Rc::clone(&*next.borrow()))
+            CupList::Cup(_,next) => Some(Rc::clone(&next.borrow()))
         }
     }
 
     pub fn set_next(&self, next: &Rc<CupList>) {
         match self {
-            CupList::Cup(_, n) => { *n.borrow_mut() = Rc::clone(&next); },
+            CupList::Cup(_, n) => { *n.borrow_mut() = Rc::clone(next); },
             CupList::Nil => panic!("Can't add next to Nil node")
         }
     }
@@ -59,7 +59,7 @@ pub struct CupListIter {
 impl Iterator for CupListIter {
     type Item = Rc<CupList>;
 
-    fn next(&mut self) -> std::option::Option<<Self as std::iter::Iterator>::Item> { 
+    fn next(&mut self) -> std::option::Option<Self::Item> { 
         // end the iterator if we hit a cycle or hit a Nil
         if let CupList::Nil = *self.current {
             return None;
@@ -69,7 +69,7 @@ impl Iterator for CupListIter {
         }
         self.is_start = true;
         let current = Rc::clone(&self.current);
-        self.current = Rc::clone(&current.next().unwrap());
+        self.current = current.next().unwrap();
         Some(current)
      }
 }
